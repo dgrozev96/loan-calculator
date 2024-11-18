@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useMemo, useCallback } from 'react';
-import { useFormikContext, Field, ErrorMessage, FormikTouched, FormikErrors } from 'formik';
+import React, { useEffect, useRef, useMemo, useState } from 'react';
 import RepaymentDetails from './RepaymentDetails';
+import { useCalculatorContext } from '../context/CalculatorContext';
+import CustomNumberInput from './CustomNumberInput';
 import { Calculator } from '../types/calculator.ts';
 
 interface LoanCalculatorProps {
@@ -9,9 +10,7 @@ interface LoanCalculatorProps {
   onRemove: (id: number) => void;
   updateMinRepayment: (calculators: Calculator[]) => void;
   isMinRepayment: boolean;
-  currency: string;
 }
-
 
 const LoanCalculator: React.FC<LoanCalculatorProps> = ({
                                                          id,
@@ -19,41 +18,40 @@ const LoanCalculator: React.FC<LoanCalculatorProps> = ({
                                                          onRemove,
                                                          updateMinRepayment,
                                                          isMinRepayment,
-                                                         currency,
-  
                                                        }) => {
-  const { values, errors, touched } = useFormikContext<any>();
+  const { calculators, setCalculators, currency } = useCalculatorContext();
+
+  const calculator = calculators[index];
+
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const annualInterestRateDecimal = useMemo(
-    () => values?.calculators[index]?.annualInterestRate / 100,
-    [values?.calculators[index]?.annualInterestRate],
+    () => calculator ? calculator.annualInterestRate / 100 : 0,
+    [calculator?.annualInterestRate],
   );
 
   const totalInterest = useMemo(
-    () =>
-      values?.calculators[index]?.loanAmount *
-      annualInterestRateDecimal *
-      values?.calculators[index]?.loanTerm,
-    [
-      values?.calculators[index]?.loanAmount,
-      annualInterestRateDecimal,
-      values?.calculators[index]?.loanTerm,
-    ],
+    () => calculator ? calculator.loanAmount * annualInterestRateDecimal * calculator.loanTerm : 0,
+    [calculator?.loanAmount, annualInterestRateDecimal, calculator?.loanTerm],
   );
 
   const totalRepayment = useMemo(
-    () => values?.calculators[index]?.loanAmount + totalInterest,
-    [values?.calculators[index]?.loanAmount, totalInterest],
+    () => calculator ? calculator.loanAmount + totalInterest : 0,
+    [calculator?.loanAmount, totalInterest],
   );
 
-  const prevTotalRepaymentRef = useRef<number>(totalRepayment);
+  const prevTotalRepaymentRef = useRef<number>(totalRepayment || 0);
 
   useEffect(() => {
-    if (prevTotalRepaymentRef.current !== totalRepayment) {
-      updateMinRepayment(values.calculators);
+    if (calculator && prevTotalRepaymentRef.current !== totalRepayment) {
+      updateMinRepayment(calculators);
       prevTotalRepaymentRef.current = totalRepayment;
     }
-  }, [totalRepayment, updateMinRepayment, values]);
+  }, [totalRepayment, updateMinRepayment, calculators, calculator]);
+
+  if (!calculator) {
+    return null; // Return null if the calculator is undefined
+  }
 
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -62,28 +60,31 @@ const LoanCalculator: React.FC<LoanCalculatorProps> = ({
     maximumFractionDigits: 2,
   });
 
-  const hasError = useCallback(
-    (field: string): boolean => {
-      const touchedCalculators = touched?.calculators as FormikTouched<any>[] | undefined;
-      const errorsCalculators = errors?.calculators as FormikErrors<any>[] | undefined;
-      return !!(
-        touchedCalculators?.[index]?.[field] &&
-        errorsCalculators?.[index]?.[field]
-      );
-    },
-    [touched, errors, index],
-  );
+  const validate = (name: string, value: number) => {
+    const newErrors: { [key: string]: string } = { ...errors };
+    if (name === 'loanAmount' && (value < 1000 || value > 100000)) {
+      newErrors.loanAmount = 'Loan amount must be between 1000 and 100000';
+    } else if (name === 'annualInterestRate' && (value < 1 || value > 100)) {
+      newErrors.annualInterestRate = 'Annual interest rate must be between 1% and 100%';
+    } else if (name === 'loanTerm' && (value < 1 || value > 30)) {
+      newErrors.loanTerm = 'Loan term must be between 1 and 30 years';
+    } else {
+      delete newErrors[name];
+    }
+    setErrors(newErrors);
+  };
 
-  const isHighlight = useMemo(() => {
-    return isMinRepayment && values.calculators.length > 1;
-  }, [isMinRepayment, values.calculators.length]);
+  const handleInputChange = (name: string, value: number) => {
+    const updatedCalculators = calculators.map((calc, idx) =>
+      idx === index ? { ...calc, [name]: value } : calc,
+    );
+    setCalculators(updatedCalculators);
+    validate(name, value);
+  };
 
   return (
     <div
-      className={`p-2 px-4 w-60 h-98 border break-words rounded-lg shadow-md ${
-        isHighlight ? 'bg-yellow-100' : 'bg-gray-300'
-      } transition-transform transform duration-500 ease-in-out`}
-    >
+      className={`p-2 px-4 w-60 h-98 border break-words rounded-lg shadow-md ${isMinRepayment ? 'bg-yellow-100' : 'bg-gray-300'} transition-transform transform duration-500 ease-in-out`}>
       <div className="mb-4">
         <label
           htmlFor={`loanAmount-${id}`}
@@ -91,26 +92,27 @@ const LoanCalculator: React.FC<LoanCalculatorProps> = ({
         >
           Loan Amount
         </label>
-        <Field
+        <input
           id={`loanAmount-${id}`}
-          name={`calculators[${index}].loanAmount`}
+          name="loanAmount"
           type="range"
           min="1000"
           max="100000"
           step="1000"
+          value={calculator.loanAmount}
           className="mt-1 block w-full"
+          onChange={(e) => handleInputChange('loanAmount', Number(e.target.value))}
         />
-        <Field
+        <CustomNumberInput
           id={`loanAmountInput-${id}`}
-          name={`calculators[${index}].loanAmount`}
-          type="number"
-          className="p-1 mt-1 block w-full rounded text-gray-400"
+          name="loanAmount"
+          value={calculator.loanAmount}
+          onChange={handleInputChange}
+          min={1000}
+          max={100000}
+          step={1000}
         />
-        <ErrorMessage
-          name={`calculators[${index}].loanAmount`}
-          component="div"
-          className="text-red-500 text-sm"
-        />
+        {errors.loanAmount && <div className="text-red-500 text-sm">{errors.loanAmount}</div>}
       </div>
 
       <div className="mb-4">
@@ -120,26 +122,27 @@ const LoanCalculator: React.FC<LoanCalculatorProps> = ({
         >
           Annual Interest Rate (%)
         </label>
-        <Field
+        <input
           id={`annualInterestRate-${id}`}
-          name={`calculators[${index}].annualInterestRate`}
+          name="annualInterestRate"
           type="range"
           min="1"
           max="100"
           step="0.1"
+          value={calculator.annualInterestRate}
           className="mt-1 block w-full"
+          onChange={(e) => handleInputChange('annualInterestRate', Number(e.target.value))}
         />
-        <Field
+        <CustomNumberInput
           id={`annualInterestRateInput-${id}`}
-          name={`calculators[${index}].annualInterestRate`}
-          type="number"
-          className="p-1 mt-1 block w-full rounded text-gray-400"
+          name="annualInterestRate"
+          value={calculator.annualInterestRate}
+          onChange={handleInputChange}
+          min={1}
+          max={100}
+          step={0.1}
         />
-        <ErrorMessage
-          name={`calculators[${index}].annualInterestRate`}
-          component="div"
-          className="text-red-500 text-sm"
-        />
+        {errors.annualInterestRate && <div className="text-red-500 text-sm">{errors.annualInterestRate}</div>}
       </div>
 
       <div className="mb-4">
@@ -149,33 +152,33 @@ const LoanCalculator: React.FC<LoanCalculatorProps> = ({
         >
           Loan Term (years)
         </label>
-        <Field
+        <input
           id={`loanTerm-${id}`}
-          name={`calculators[${index}].loanTerm`}
+          name="loanTerm"
           type="range"
           min="1"
           max="30"
           step="1"
+          value={calculator.loanTerm}
           className="mt-1 block w-full"
+          onChange={(e) => handleInputChange('loanTerm', Number(e.target.value))}
         />
-        <Field
+        <CustomNumberInput
           id={`loanTermInput-${id}`}
-          name={`calculators[${index}].loanTerm`}
-          type="number"
-          step="1"
-          className="p-1 mt-1 block w-full text-gray-400 rounded"
+          name="loanTerm"
+          value={calculator.loanTerm}
+          onChange={handleInputChange}
+          min={1}
+          max={30}
+          step={1}
         />
-        <ErrorMessage
-          name={`calculators[${index}].loanTerm`}
-          component="div"
-          className="text-red-500 text-sm"
-        />
+        {errors.loanTerm && <div className="text-red-500 text-sm">{errors.loanTerm}</div>}
       </div>
 
       <RepaymentDetails
-        totalInterest={totalInterest}
-        totalRepayment={totalRepayment}
-        hasError={hasError}
+        totalInterest={totalInterest || 0}
+        totalRepayment={totalRepayment || 0}
+        hasError={() => !!(errors.loanAmount || errors.annualInterestRate || errors.loanTerm)}
         formatter={formatter}
       />
 

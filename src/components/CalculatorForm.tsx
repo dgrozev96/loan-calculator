@@ -1,90 +1,71 @@
 import React from 'react';
-import { Formik } from 'formik';
-import * as Yup from 'yup';
-import LoanCalculator from './LoanCalculator.tsx';
+import LoanCalculator from './LoanCalculator';
 import { CSSTransition, TransitionGroup } from 'react-transition-group';
+import { useCalculatorContext } from '../context/CalculatorContext';
+import { Calculator } from '../types/calculator.ts';
 
-interface CalculatorFormProps {
-  calculators: any[];
-  formikRef: any;
-  addCalculator: () => void;
-  removeCalculator: (id: number) => void;
-  updateMinRepayment: (calculators: any[]) => void;
-  minRepayment: any;
-  currency: string;
-}
+const CalculatorForm: React.FC = () => {
+  const {
+    calculators,
+    setCalculators,
+    repayments,
+    setRepayments,
+    minRepayment,
+    setMinRepayment,
+  } = useCalculatorContext();
 
+// src/components/CalculatorForm.tsx
 
-const CalculatorForm: React.FC<CalculatorFormProps> = ({
-                                                         calculators,
-                                                         formikRef,
-                                                         addCalculator,
-                                                         removeCalculator,
-                                                         updateMinRepayment,
-                                                         minRepayment,
-                                                         currency,
-                                                       }) => (
-  <Formik
-    innerRef={formikRef}
-    initialValues={{
-      calculators: calculators.map(id => ({
-        id,
-        loanAmount: 10000,
-        annualInterestRate: 5,
-        loanTerm: 3,
-      })),
-    }}
-    validationSchema={Yup.object({
-      calculators: Yup.array().of(
-        Yup.object({
-          loanAmount: Yup.number()
-            .required('Required')
-            .positive('Must be positive')
-            .max(10000000, 'Must not exceed 10 million'),
-          annualInterestRate: Yup.number()
-            .required('Required')
-            .min(1, 'Must be at least 1')
-            .max(100, 'Must be at most 100'),
-          loanTerm: Yup.number()
-            .required('Required')
-            .min(1, 'Must be at least 1')
-            .max(100, 'Must be at most 100')
-            .integer('Must be an integer'),
-        }),
-      ),
-    })}
-    onSubmit={() => {
-    }}
-  >
-    {({ values }) => (
-      <div>
-        <button
-          onClick={addCalculator}
-          className="bg-green-500 text-white py-2 rounded-md mb-2"
-        >
-          Add Calculator
-        </button>
-        <TransitionGroup className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {values.calculators.map((calculator, index) => (
-            <CSSTransition
-              key={calculator.id}
-              timeout={500}
-              classNames="fade"
-            >
-              <LoanCalculator
-                id={calculator.id}
-                index={index}
-                onRemove={removeCalculator}
-                updateMinRepayment={updateMinRepayment}
-                isMinRepayment={minRepayment?.id === calculator.id}
-                currency={currency}
-              />
-            </CSSTransition>
-          ))}
-        </TransitionGroup>
-      </div>
-    )}
-  </Formik>
-);
+  const addCalculator = () => {
+    const newId = calculators.length + 1;
+    const newCalculators = [...calculators, { id: newId, loanAmount: 10000, annualInterestRate: 5, loanTerm: 3 }];
+    setCalculators(newCalculators);
+    updateMinRepayment(newCalculators);
+  };
+
+  const removeCalculator = (id: number) => {
+    const newCalculators = calculators.filter(calc => calc.id !== id);
+    setCalculators(newCalculators);
+    setRepayments(repayments.filter(repayment => repayment.id !== id));
+    updateMinRepayment(newCalculators);
+  };
+
+  const updateMinRepayment = (calculators: Calculator[]) => {
+    if (calculators.length === 1) {
+      setMinRepayment(null);
+      return;
+    }
+
+    const updatedRepayments = calculators.map(calculator => ({
+      id: calculator.id,
+      amount: calculator.loanAmount + ((calculator.loanAmount * calculator.annualInterestRate) / 100) * calculator.loanTerm,
+    }));
+
+    const min = updatedRepayments.reduce((prev, curr) => (curr.amount < prev.amount ? curr : prev), updatedRepayments[0]);
+    setMinRepayment(min);
+    setRepayments(updatedRepayments);
+  };
+
+  return (
+    <div>
+      <button onClick={addCalculator} className="bg-green-500 text-white py-2 rounded-md mb-2">
+        Add Calculator
+      </button>
+      <TransitionGroup className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {calculators.map((calculator, index) => (
+          <CSSTransition key={calculator.id} timeout={500} classNames="fade">
+            <LoanCalculator
+              id={calculator.id}
+              index={index}
+              onRemove={removeCalculator}
+              updateMinRepayment={updateMinRepayment}
+              isMinRepayment={minRepayment?.id === calculator.id}
+            />
+          </CSSTransition>
+        ))}
+      </TransitionGroup>
+    </div>
+  );
+};
 
 export default CalculatorForm;
