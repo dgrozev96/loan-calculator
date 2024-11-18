@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useMemo, useState } from 'react';
 import RepaymentDetails from './RepaymentDetails';
 import { useCalculatorContext } from '../context/CalculatorContext';
 import CustomNumberInput from './CustomNumberInput';
-import { Calculator } from '../types/calculator.ts';
+import { Calculator } from '../types/calculator';
 
 interface LoanCalculatorProps {
   id: number;

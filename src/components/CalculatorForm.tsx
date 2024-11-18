@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import LoanCalculator from './LoanCalculator';
 import { useCalculatorContext } from '../context/CalculatorContext';
-import { Calculator } from '../types/calculator.ts';
+import { Calculator } from '../types/calculator';
 import { CSSTransition, TransitionGroup } from 'react-transition-group';
 
 const CalculatorForm: React.FC = () => {
