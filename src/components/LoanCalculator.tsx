@@ -25,16 +25,19 @@ const LoanCalculator: React.FC<LoanCalculatorProps> = ({
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
+  // Calculate annual interest rate as a decimal
   const annualInterestRateDecimal = useMemo(
     () => calculator ? calculator.annualInterestRate / 100 : 0,
     [calculator?.annualInterestRate],
   );
 
+  // Calculate total interest
   const totalInterest = useMemo(
     () => calculator ? calculator.loanAmount * annualInterestRateDecimal * calculator.loanTerm : 0,
     [calculator?.loanAmount, annualInterestRateDecimal, calculator?.loanTerm],
   );
 
+  // Calculate total repayment
   const totalRepayment = useMemo(
     () => calculator ? calculator.loanAmount + totalInterest : 0,
     [calculator?.loanAmount, totalInterest],
@@ -42,6 +45,7 @@ const LoanCalculator: React.FC<LoanCalculatorProps> = ({
 
   const prevTotalRepaymentRef = useRef<number>(totalRepayment || 0);
 
+  // Update minimum repayment when total repayment changes
   useEffect(() => {
     if (calculator && prevTotalRepaymentRef.current !== totalRepayment) {
       updateMinRepayment(calculators);
@@ -53,6 +57,7 @@ const LoanCalculator: React.FC<LoanCalculatorProps> = ({
     return null;
   }
 
+  // Formatter for currency display
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency,
@@ -60,6 +65,7 @@ const LoanCalculator: React.FC<LoanCalculatorProps> = ({
     maximumFractionDigits: 2,
   });
 
+  // Validate input values
   const validate = (name: string, value: number) => {
     const newErrors: { [key: string]: string } = { ...errors };
     if (name === 'loanAmount' && (value < 1000 || value > 100000)) {
@@ -74,6 +80,7 @@ const LoanCalculator: React.FC<LoanCalculatorProps> = ({
     setErrors(newErrors);
   };
 
+  // Handle input changes
   const handleInputChange = (name: string, value: number) => {
     const updatedCalculators = calculators.map((calc, idx) =>
       idx === index ? { ...calc, [name]: value } : calc,
