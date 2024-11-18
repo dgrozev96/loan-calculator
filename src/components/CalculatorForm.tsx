@@ -14,6 +14,7 @@ interface CalculatorFormProps {
   currency: string;
 }
 
+
 const CalculatorForm: React.FC<CalculatorFormProps> = ({
                                                          calculators,
                                                          formikRef,
@@ -52,7 +53,8 @@ const CalculatorForm: React.FC<CalculatorFormProps> = ({
         }),
       ),
     })}
-    onSubmit={() => {}}
+    onSubmit={() => {
+    }}
   >
     {({ values }) => (
       <div>
