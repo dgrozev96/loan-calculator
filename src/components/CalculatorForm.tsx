@@ -13,9 +13,7 @@ const CalculatorForm: React.FC = () => {
     minRepayment,
     setMinRepayment,
   } = useCalculatorContext();
-
-// src/components/CalculatorForm.tsx
-
+  
   const addCalculator = () => {
     const newId = calculators.length + 1;
     const newCalculators = [...calculators, { id: newId, loanAmount: 10000, annualInterestRate: 5, loanTerm: 3 }];

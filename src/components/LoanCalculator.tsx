@@ -50,7 +50,7 @@ const LoanCalculator: React.FC<LoanCalculatorProps> = ({
   }, [totalRepayment, updateMinRepayment, calculators, calculator]);
 
   if (!calculator) {
-    return null; // Return null if the calculator is undefined
+    return null;
   }
 
   const formatter = new Intl.NumberFormat('en-US', {
