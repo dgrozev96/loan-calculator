@@ -34,6 +34,7 @@ const CustomNumberInput: React.FC<CustomNumberInputProps> = ({
     }
   };
 
+  // Reset input value to the original value if the current input is empty or invalid
   const handleBlur = () => {
     if (inputValue === '' || isNaN(parseFloat(inputValue))) {
       setInputValue(value.toString());

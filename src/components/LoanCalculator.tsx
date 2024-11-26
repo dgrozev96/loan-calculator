@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useMemo, useState } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import RepaymentDetails from './RepaymentDetails';
 import { useCalculatorContext } from '../context/CalculatorContext';
 import CustomNumberInput from './CustomNumberInput';
 import { Calculator } from '../types/calculator';
+import useValidation from '../hooks/useValidation';
 
 interface LoanCalculatorProps {
   id: number;
@@ -20,10 +21,9 @@ const LoanCalculator: React.FC<LoanCalculatorProps> = ({
                                                          isMinRepayment,
                                                        }) => {
   const { calculators, setCalculators, currency } = useCalculatorContext();
-
+  const { validate, errors } = useValidation();
   const calculator = calculators[index];
 
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   // Calculate annual interest rate as a decimal
   const annualInterestRateDecimal = useMemo(
@@ -65,20 +65,6 @@ const LoanCalculator: React.FC<LoanCalculatorProps> = ({
     maximumFractionDigits: 2,
   });
 
-  // Validate input values
-  const validate = (name: string, value: number) => {
-    const newErrors: { [key: string]: string } = { ...errors };
-    if (name === 'loanAmount' && (value < 1000 || value > 100000)) {
-      newErrors.loanAmount = 'Loan amount must be between 1000 and 100000';
-    } else if (name === 'annualInterestRate' && (value < 1 || value > 100)) {
-      newErrors.annualInterestRate = 'Annual interest rate must be between 1% and 100%';
-    } else if (name === 'loanTerm' && (value < 1 || value > 30)) {
-      newErrors.loanTerm = 'Loan term must be between 1 and 30 years';
-    } else {
-      delete newErrors[name];
-    }
-    setErrors(newErrors);
-  };
 
   // Handle input changes
   const handleInputChange = (name: string, value: number) => {
